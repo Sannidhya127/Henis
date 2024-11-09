@@ -1,0 +1,9 @@
+locker{
+    a = 5
+    b = "hey"
+    c = 4+2/4*2-3
+}
+
+print a
+print "yo"
+
