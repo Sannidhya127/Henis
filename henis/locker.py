@@ -2,49 +2,7 @@
 
 import ctypes as c
 import re
-
-# assigner = '='
-# # libc = c.CDLL("libc.so.6")
-# # libc.printf.argtypes = [c.c_char_p]
-# def assign(line):
-#     global assigner
-#     params = line.split('=', 1)
-#     if type(params[1]) == str:
-#         # params[0] = c.create_string_buffer(100)
-#         try:
-#             params[1] = eval(params[1])
-#         except:
-#             pass
-#         try:
-#             final = params[1].strip().encode('utf-8')
-#         except:
-#             final = params[1]
-#         params[0] = c.c_char_p(final.encode('utf-8'))
-#     elif type(params[1]) == int:
-#         try:
-#             params[1] = eval(params[1])
-#         except:
-#             pass
-#         params[0] = c.c_int(params[1])
-#     elif type(params[1]) == float:
-#         try:
-#             params[1] = eval(params[1])
-#         except:
-#             pass
-#         params[0] = c.c_float(params[1])
-#     elif type(params[1]) == bool:
-#         try:
-#             params[1] = eval(params[1])
-#         except:
-#             pass
-#         params[0] = c.c_bool(params[1])
-#     else:   
-#         print("Error: Invalid type")
-#         return
-    
-#     prt = c.pointer(params[0])
-#     print(prt.contents.value.decode('utf-8'))
-
+import numexpr as ne
 
 
 
@@ -95,9 +53,9 @@ class Buffer:
 class Variable(Locker):
     def __init__(self, line):
         super().__init__(line)
-        pattern = r"(?<=^|\s)(?!')\s+|\s+(?=\s|$)"
+
     
-    # Replace the matched whitespace with an empty string
+        self.variables = {}
         self.value = strip_outside_quotes(self.params[1])
         self.vid = self.params[0]
     
@@ -112,27 +70,51 @@ class Variable(Locker):
             return "11"
         
         # Check if it's alphanumeric without quotes
-        elif self.value.isalnum():
+        elif bool(re.fullmatch(r"^[a-zA-Z0-9+\-*/]+$", self.value)):
             return "01"
         
         # Default case if none of the above match
         else:
-            print(self.value, self.value.startswith("'"), self.value.endswith("'")) 
+            print("Unrecognized type. Error code: 000/10") 
             return "10"
     def var_parser(self):
+        print(self.vid)
         check = self.check_string_type()
         if check == "00":
+            print("Enetered str")
             val = self.value[1:-1]
             self.vid = Buffer(val)
-            return self.vid.get_buffer_address(), self.vid.get_buffer_value()
+            self.variables[self.vid] = self.vid.get_buffer_value()
+            print(self.variables)
+            print(f"buffer adress: {self.vid.get_buffer_address()}, Buffer value: {self.vid.get_buffer_value()}") 
         elif check == "11":
-            return 11
+            print("Entered num")
+            try:
+                val = ne.evaluate(self.value)
+                self.vid = Buffer(str(val))
+                self.variables[self.vid] = self.vid.get_buffer_value()
+                print(self.variables)
+                print(f"buffer adress: {self.vid.get_buffer_address()}, Buffer value: {self.vid.get_buffer_value()}")
+            except:
+                print("Invalid operation.")
         elif check == "01":
-            return '01'
+            print("Entered alpha")
+            print(self.variables)
+            for i in self.value:
+                if i.isalpha():
+                    if i not in self.variables:
+                        print(f"Variable {i} not defined.")
+                        return
+                    else:
+                        self.value = self.value.replace(i, self.vid.get_buffer_value())
+                        print(f"buffer adress: {self.vid.get_buffer_address()}, Buffer value: {self.vid.get_buffer_value()}")
         elif check == '10':
             return '000'
+variable_instance_b = Variable("a=6")
+print(f"String: {variable_instance_b.value}")
+print(f"Type: {type(variable_instance_b)}")
+variable_instance_a = Variable("j =a+5")
 
-variable_instance = Variable("j = 'yo bro' ")
-print(f"String: {variable_instance.value}")
-print(f"Type: {type(variable_instance)}")
-print(f"Buffer Address: {variable_instance.var_parser()}")
+variable_instance_a.var_parser()
+print(f"Type: {type(variable_instance_a)}")
+print(variable_instance_a.variables)
