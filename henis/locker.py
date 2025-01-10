@@ -3,8 +3,7 @@
 import ctypes as c
 import re
 import numexpr as ne
-
-
+from p_structure import Structure
 
 # assign("a = 34/33.3")
 def strip_outside_quotes(input_string):
@@ -51,11 +50,11 @@ class Buffer:
         # Access value using the buffer pointer (dereference it)
         return self.buffer_pointer.contents.value.decode('utf-8')
 class Variable(Locker):
-    def __init__(self, line):
+    def __init__(self, line, variables={}):
         super().__init__(line)
 
     
-        self.variables = {}
+        self.variables = variables
         self.value = strip_outside_quotes(self.params[1])
         self.vid = self.params[0]
     
@@ -84,37 +83,35 @@ class Variable(Locker):
             print("Enetered str")
             val = self.value[1:-1]
             self.vid = Buffer(val)
-            self.variables[self.vid] = self.vid.get_buffer_value()
-            print(self.variables)
-            print(f"buffer adress: {self.vid.get_buffer_address()}, Buffer value: {self.vid.get_buffer_value()}") 
+            newString = Structure(self.vid, val)
         elif check == "11":
             print("Entered num")
             try:
                 val = ne.evaluate(self.value)
+                print(val)
                 self.vid = Buffer(str(val))
-                self.variables[self.vid] = self.vid.get_buffer_value()
-                print(self.variables)
-                print(f"buffer adress: {self.vid.get_buffer_address()}, Buffer value: {self.vid.get_buffer_value()}")
+                newInt = Structure(self.vid, val)
             except:
-                print("Invalid operation.")
-        elif check == "01":
-            print("Entered alpha")
-            print(self.variables)
-            for i in self.value:
-                if i.isalpha():
-                    if i not in self.variables:
-                        print(f"Variable {i} not defined.")
-                        return
-                    else:
-                        self.value = self.value.replace(i, self.vid.get_buffer_value())
-                        print(f"buffer adress: {self.vid.get_buffer_address()}, Buffer value: {self.vid.get_buffer_value()}")
+                print("Invalid operation")
+        elif check == '01':
+            print("Entered bool")
+            try:
+                val = ne.evaluate(self.value)
+                self.vid = Buffer(str(val))
+                
+                newBool = Structure(self.vid, val=val)
+            except Exception as e:
+                print(e)
         elif check == '10':
             return '000'
-variable_instance_b = Variable("a=6")
+variable_instance_b = Variable("a='hey'")
 print(f"String: {variable_instance_b.value}")
-print(f"Type: {type(variable_instance_b)}")
-variable_instance_a = Variable("j =a+5")
+
+variable_instance_a = Variable("j = True")
 
 variable_instance_a.var_parser()
-print(f"Type: {type(variable_instance_a)}")
-print(variable_instance_a.variables)
+
+print(variable_instance_a.value)
+
+vic = Variable("c = 34/33.3+2")
+print(vic.value)
