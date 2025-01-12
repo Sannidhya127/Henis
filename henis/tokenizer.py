@@ -11,7 +11,12 @@ class Tokenizer:
             ("operator", r'[+\-*/=]'),           # Operators
             ("paren_open", r'\('),               # Open parenthesis
             ("paren_close", r'\)'),              # Close parenthesis
-            ("whitespace", r'\s+'),              # Whitespace (to be ignored)
+            ("whitespace", r'\s+'),     
+            ("unknown", r'.'), # Unknown
+            ('escape', r'"([^"\\]|\\.)*"')
+
+              # Matches any unrecognized character
+         # Whitespace (to be ignored)
         ]
 
         # Combine all patterns into a single regex
@@ -30,11 +35,12 @@ class Tokenizer:
             tokens.append({"type": token_type, "value": token_value})
         return tokens
 
+if __name__ == "__main__":
 
-code = '@print("Result is: " + (x + y))'
+    code = '@print("Result is: " + (x + y)) -1'
 
-tokenizer = Tokenizer()
-tokens = tokenizer.tokenize(code)
-
-for token in tokens:
-    print(token)
+    tokenizer = Tokenizer()
+    tokens = tokenizer.tokenize(code)
+    print(tokens)
+    for token in tokens:
+        print(token)
