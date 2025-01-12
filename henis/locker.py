@@ -1,117 +1,40 @@
-# Assign right hand value to left hand place holder
-
-import ctypes as c
 import re
-import numexpr as ne
-from p_structure import Structure
 
-# assign("a = 34/33.3")
-def strip_outside_quotes(input_string):
-      
-        parts = re.split(r"('.*?')", input_string) 
+class Tokenizer:
+    def __init__(self):
+        # Define regex patterns for different token types
+        self.token_patterns = [
+            ("function_call", r'@[a-zA-Z_]\w*'),  # Function calls starting with @
+            ("string", r'"[^"]*"'),              # Strings enclosed in double quotes
+            ("number", r'\d+(\.\d+)?'),          # Integers or decimals
+            ("variable", r'[a-zA-Z_]\w*'),       # Variables (alphabets + underscore)
+            ("operator", r'[+\-*/=]'),           # Operators
+            ("paren_open", r'\('),               # Open parenthesis
+            ("paren_close", r'\)'),              # Close parenthesis
+            ("whitespace", r'\s+'),              # Whitespace (to be ignored)
+        ]
 
-      
-        for i in range(len(parts)):
-            if i % 2 == 0:  
-                parts[i] = parts[i].strip()
+        # Combine all patterns into a single regex
+        self.master_pattern = re.compile("|".join(f"(?P<{name}>{pattern})" for name, pattern in self.token_patterns))
 
-        return ''.join(parts)
+    def tokenize(self, code):
+        tokens = []
+        for match in self.master_pattern.finditer(code):
+            token_type = match.lastgroup
+            token_value = match.group(token_type)
 
-class Locker:
-    def __init__(self, line):
-        self.line = line
-        self.assigner = '='
-        match = re.match(r"(\w+)\s*=\s*(.*)", self.line)
-        if match:
-            self.params = [match.group(1), match.group(2)]
-        else:
-            raise ValueError("Line format is incorrect. Expected format: name = value")
-        
-class Buffer:
-    def __init__(self, initial_value):
-        # Create a buffer with extra space
-        self.buffer = c.create_string_buffer(len(initial_value) + 1)
-        self.buffer.value = initial_value.encode('utf-8')
+            # Ignore whitespace tokens
+            if token_type == "whitespace":
+                continue
 
-        # Get pointer to the buffer
-        self.buffer_pointer = c.pointer(self.buffer)
+            tokens.append({"type": token_type, "value": token_value})
+        return tokens
 
-    def get_buffer_address(self):
-        # Retrieve the buffer's address directly
-        return c.addressof(self.buffer)
-    def set_value(self, new_val):
-        # Update the buffer in-place
-        if len(new_val) <= len(self.buffer) - 1:
-            self.buffer.value = new_val.encode('utf-8')  # Direct memory update
-        else:
-            raise ValueError("New value is too large for the buffer.")
 
-    def get_buffer_value(self):
-        # Access value using the buffer pointer (dereference it)
-        return self.buffer_pointer.contents.value.decode('utf-8')
-class Variable(Locker):
-    def __init__(self, line, variables={}):
-        super().__init__(line)
+code = '@print("Result is: " + (x + y))'
 
-    
-        self.variables = variables
-        self.value = strip_outside_quotes(self.params[1])
-        self.vid = self.params[0]
-    
-   
-    def check_string_type(self):
-        # Check if enclosed in single or double quotes
-        if (self.value.startswith("'") and self.value.endswith("'")) or (self.value.startswith('"') and self.value.endswith('"')):
-            return "00"
-        
-        # Check if it's a numeric operation (numbers and valid operators)
-        elif re.fullmatch(r"[0-9+\-*/%^(). ]+", self.value):
-            return "11"
-        
-        # Check if it's alphanumeric without quotes
-        elif bool(re.fullmatch(r"^[a-zA-Z0-9+\-*/]+$", self.value)):
-            return "01"
-        
-        # Default case if none of the above match
-        else:
-            print("Unrecognized type. Error code: 000/10") 
-            return "10"
-    def var_parser(self):
-        print(self.vid)
-        check = self.check_string_type()
-        if check == "00":
-            print("Enetered str")
-            val = self.value[1:-1]
-            self.vid = Buffer(val)
-            newString = Structure(self.vid, val)
-        elif check == "11":
-            print("Entered num")
-            try:
-                val = ne.evaluate(self.value)
-                print(val)
-                self.vid = Buffer(str(val))
-                newInt = Structure(self.vid, val)
-            except:
-                print("Invalid operation")
-        elif check == '01':
-            print("Entered bool")
-            try:
-                val = ne.evaluate(self.value)
-                self.vid = Buffer(str(val))
-                
-                newBool = Structure(self.vid, val=val)
-            except Exception as e:
-                print(e)
-        elif check == '10':
-            return '000'
-variable_instance_b = Variable("a='hey'")
-print(f"String: {variable_instance_b.value}")
+tokenizer = Tokenizer()
+tokens = tokenizer.tokenize(code)
 
-variable_instance_a = Variable("j = True")
-
-variable_instance_a.var_parser()
-
-print(variable_instance_a.value)
-
-vic = Variable("c = 34/33.3+2")
-print(vic.value)
+for token in tokens:
+    print(token)
